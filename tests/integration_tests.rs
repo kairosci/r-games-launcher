@@ -1,4 +1,4 @@
-use r_games_launcher::{auth::AuthManager, config::Config, games::GameManager};
+use rauncher::{auth::AuthManager, config::Config, games::GameManager};
 use std::fs;
 use tempfile::TempDir;
 

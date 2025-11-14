@@ -5,6 +5,9 @@ use std::time::Duration;
 use crate::auth::AuthToken;
 use crate::{Error, Result};
 
+// Request timeout configuration
+const REQUEST_TIMEOUT_SECS: u64 = 30;
+
 // Epic Games Store API endpoints
 const OAUTH_TOKEN_URL: &str =
     "https://account-public-service-prod.ol.epicgames.com/account/api/oauth/token";
@@ -35,12 +38,12 @@ struct OAuthTokenResponse {
     account_id: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-struct DeviceAuthResponse {
-    verification_uri_complete: String,
-    user_code: String,
-    device_code: String,
-    expires_in: i64,
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeviceAuthResponse {
+    pub verification_uri_complete: String,
+    pub user_code: String,
+    pub device_code: String,
+    pub expires_in: i64,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -145,19 +148,15 @@ pub struct EpicClient {
 impl EpicClient {
     pub fn new() -> Result<Self> {
         let client = Client::builder()
-            .user_agent("r-games-launcher/0.1.0")
+            .user_agent("rauncher/0.1.0")
+            .timeout(Duration::from_secs(REQUEST_TIMEOUT_SECS))
             .build()?;
 
         Ok(Self { client })
     }
 
-    /// Authenticate with Epic Games using device code flow
-    pub async fn authenticate(&self) -> Result<(String, String, AuthToken)> {
-        // TODO: Implement rate limiting and exponential backoff for API requests
-        // TODO: Add timeout configuration for network requests
-        // TODO: Handle network interruptions gracefully with retry logic
-
-        // Step 1: Request device authorization
+    /// Request device authorization (Step 1 of OAuth device flow)
+    pub async fn request_device_auth(&self) -> Result<DeviceAuthResponse> {
         log::info!("Requesting device authorization from Epic Games");
 
         let device_auth_response = self
@@ -184,11 +183,62 @@ impl EpicClient {
             device_auth.verification_uri_complete
         );
 
-        // Step 2: Poll for token
+        Ok(device_auth)
+    }
+
+    /// Poll for token using device code (Step 2 of OAuth device flow)
+    pub async fn poll_for_token(&self, device_code: &str) -> Result<Option<AuthToken>> {
+        let response = self
+            .client
+            .post(OAUTH_TOKEN_URL)
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .basic_auth(CLIENT_ID, Some(CLIENT_SECRET))
+            .form(&[("grant_type", "device_code"), ("device_code", device_code)])
+            .send()
+            .await?;
+
+        if response.status().is_success() {
+            let oauth_response: OAuthTokenResponse = response.json().await?;
+
+            log::info!("Successfully authenticated with Epic Games");
+
+            let token = AuthToken {
+                access_token: oauth_response.access_token,
+                refresh_token: oauth_response.refresh_token,
+                expires_at: chrono::Utc::now()
+                    + chrono::Duration::seconds(oauth_response.expires_in),
+                account_id: oauth_response.account_id,
+            };
+
+            return Ok(Some(token));
+        }
+
+        // Check if we got an error that means we should continue polling
+        let status = response.status();
+        if status == 400 {
+            // This is expected while waiting for user to authenticate
+            log::debug!("Still waiting for user authentication...");
+            return Ok(None);
+        }
+
+        // Any other error should be reported
+        let error_text = response.text().await.unwrap_or_default();
+        Err(Error::Auth(format!(
+            "Authentication failed: {} - {}",
+            status, error_text
+        )))
+    }
+
+    /// Authenticate with Epic Games using device code flow (combined method for CLI)
+    pub async fn authenticate(&self) -> Result<(String, String, AuthToken)> {
+        // Step 1: Request device authorization
+        let device_auth = self.request_device_auth().await?;
+
         let device_code = device_auth.device_code.clone();
         let user_code = device_auth.user_code.clone();
         let verification_url = device_auth.verification_uri_complete.clone();
 
+        // Step 2: Poll for token
         // Poll every 5 seconds for up to 10 minutes
         let max_attempts = 120; // 10 minutes
         let poll_interval = Duration::from_secs(5);
@@ -204,45 +254,9 @@ impl EpicClient {
                 max_attempts
             );
 
-            let response = self
-                .client
-                .post(OAUTH_TOKEN_URL)
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .basic_auth(CLIENT_ID, Some(CLIENT_SECRET))
-                .form(&[("grant_type", "device_code"), ("device_code", &device_code)])
-                .send()
-                .await?;
-
-            if response.status().is_success() {
-                let oauth_response: OAuthTokenResponse = response.json().await?;
-
-                log::info!("Successfully authenticated with Epic Games");
-
-                let token = AuthToken {
-                    access_token: oauth_response.access_token,
-                    refresh_token: oauth_response.refresh_token,
-                    expires_at: chrono::Utc::now()
-                        + chrono::Duration::seconds(oauth_response.expires_in),
-                    account_id: oauth_response.account_id,
-                };
-
+            if let Some(token) = self.poll_for_token(&device_code).await? {
                 return Ok((user_code, verification_url, token));
             }
-
-            // Check if we got an error that means we should continue polling
-            let status = response.status();
-            if status == 400 {
-                // This is expected while waiting for user to authenticate
-                log::debug!("Still waiting for user authentication...");
-                continue;
-            }
-
-            // Any other error should be reported
-            let error_text = response.text().await.unwrap_or_default();
-            return Err(Error::Auth(format!(
-                "Authentication failed: {} - {}",
-                status, error_text
-            )));
         }
 
         Err(Error::Auth(
