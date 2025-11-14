@@ -24,7 +24,7 @@ impl AuthToken {
         // TODO: Use OS keychain/credential manager for secure storage
         // TODO: Set restrictive file permissions (0600) on token file
         // TODO: Validate token before saving to prevent corrupt data
-        
+
         let auth_path = Self::auth_path()?;
 
         if let Some(parent) = auth_path.parent() {
@@ -42,7 +42,7 @@ impl AuthToken {
         // TODO: Validate token integrity (checksum/signature)
         // TODO: Handle migration from old token formats
         // TODO: Add error recovery for corrupted token files
-        
+
         let auth_path = Self::auth_path()?;
 
         if !auth_path.exists() {

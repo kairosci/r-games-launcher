@@ -57,7 +57,7 @@ impl Config {
         // TODO: Handle config migration for version changes
         // TODO: Merge user config with defaults for missing values
         // TODO: Add config file watching for hot-reload
-        
+
         let config_path = Self::config_path()?;
 
         if config_path.exists() {
