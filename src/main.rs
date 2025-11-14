@@ -22,7 +22,31 @@ async fn main() -> Result<()> {
     // Initialize auth manager
     let mut auth = AuthManager::new()?;
 
+    // Launch GUI by default if no command is specified
     match cli.command {
+        None => {
+            // Launch GUI when no command is provided
+            use r_games_launcher::gui::LauncherApp;
+            
+            let native_options = eframe::NativeOptions {
+                viewport: egui::ViewportBuilder::default()
+                    .with_inner_size([1200.0, 800.0])
+                    .with_min_inner_size([800.0, 600.0])
+                    .with_title("R Games Launcher"),
+                ..Default::default()
+            };
+
+            if let Err(e) = eframe::run_native(
+                "R Games Launcher",
+                native_options,
+                Box::new(|cc| Ok(Box::new(LauncherApp::new(cc)))),
+            ) {
+                eprintln!("Failed to run GUI: {}", e);
+                std::process::exit(1);
+            }
+        }
+        
+        Some(command) => match command {
         Commands::Auth { logout } => {
             if logout {
                 auth.logout()?;
@@ -289,6 +313,7 @@ async fn main() -> Result<()> {
                 eprintln!("Failed to run GUI: {}", e);
                 std::process::exit(1);
             }
+        }
         }
     }
 

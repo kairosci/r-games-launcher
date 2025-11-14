@@ -4,12 +4,12 @@ An Epic Games Store launcher for Linux written in Rust, inspired by [Legendary](
 
 ## Features
 
+- **GUI-First Design**: Launches directly into a minimal, Epic Games-inspired graphical interface
 - **Cross-platform support**: Built for Linux with Rust's performance and safety guarantees
 - **Epic Games Store Integration**: Authenticate and access your Epic Games library
 - **Game Management**: List, install, launch, and uninstall games
 - **Configuration Management**: Persistent configuration and authentication
-- **GUI Interface**: Minimal, Epic Games-inspired graphical user interface
-- **CLI Interface**: Easy-to-use command-line interface
+- **Optional CLI Commands**: Command-line interface available for advanced users and automation
 
 ## Installation
 
@@ -29,12 +29,12 @@ cargo install --path .
 
 ## Usage
 
-### GUI Mode
+### Launch the Application
 
-Launch the graphical user interface:
+Simply run the launcher to start the GUI:
 
 ```bash
-r-games-launcher gui
+r-games-launcher
 ```
 
 The GUI provides an Epic Games Store-like experience with:
@@ -44,9 +44,9 @@ The GUI provides an Epic Games Store-like experience with:
 - **Quick Actions**: Install, launch, or uninstall games with one click
 - **Dark Theme**: Modern dark interface inspired by Epic Games Store
 
-### CLI Mode
+### Optional CLI Commands
 
-The launcher also provides a full command-line interface for all operations.
+For advanced users and automation, CLI commands are still available:
 
 ### Authentication
 
