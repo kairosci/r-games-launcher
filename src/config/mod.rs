@@ -31,26 +31,6 @@ impl Default for Config {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_config_default() {
-        let config = Config::default();
-        assert_eq!(config.log_level, "info");
-        assert!(config.install_dir.to_string_lossy().contains("games"));
-    }
-
-    #[test]
-    fn test_config_serialization() {
-        let config = Config::default();
-        let serialized = toml::to_string(&config).unwrap();
-        let deserialized: Config = toml::from_str(&serialized).unwrap();
-        assert_eq!(config.log_level, deserialized.log_level);
-    }
-}
-
 impl Config {
     pub fn load() -> Result<Self> {
         // TODO: Handle config migration for version changes
@@ -121,5 +101,25 @@ impl Config {
             .ok_or_else(|| Error::Config("Failed to determine project directories".to_string()))?;
 
         Ok(project_dirs.data_dir().to_path_buf())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_config_default() {
+        let config = Config::default();
+        assert_eq!(config.log_level, "info");
+        assert!(config.install_dir.to_string_lossy().contains("games"));
+    }
+
+    #[test]
+    fn test_config_serialization() {
+        let config = Config::default();
+        let serialized = toml::to_string(&config).unwrap();
+        let deserialized: Config = toml::from_str(&serialized).unwrap();
+        assert_eq!(config.log_level, deserialized.log_level);
     }
 }
