@@ -130,6 +130,19 @@ impl LauncherApp {
     fn handle_install(&mut self, app_name: String) {
         self.status_message = format!("Installing {}...", app_name);
         
+        // Find the game in our library to get proper title
+        let game_title = self.library_games
+            .iter()
+            .find(|g| g.app_name == app_name)
+            .map(|g| g.app_title.clone())
+            .unwrap_or_else(|| format!("Game: {}", app_name));
+        
+        let game_version = self.library_games
+            .iter()
+            .find(|g| g.app_name == app_name)
+            .map(|g| g.app_version.clone())
+            .unwrap_or_else(|| "1.0.0".to_string());
+        
         // For demo purposes, we'll create a mock installation
         let config = Arc::clone(&self.config);
         let app_name_clone = app_name.clone();
@@ -137,21 +150,48 @@ impl LauncherApp {
         std::thread::spawn(move || {
             std::thread::sleep(std::time::Duration::from_secs(2));
             
+            // Create the installation directory
+            let install_path = config.install_dir.join(&app_name_clone);
+            if let Err(e) = std::fs::create_dir_all(&install_path) {
+                eprintln!("Failed to create install directory: {}", e);
+                return;
+            }
+            
             // Create a demo installed game entry
             let game = InstalledGame {
                 app_name: app_name_clone.clone(),
-                app_title: format!("Game: {}", app_name_clone),
-                app_version: "1.0.0".to_string(),
-                install_path: config.install_dir.join(&app_name_clone),
-                executable: "game.exe".to_string(),
+                app_title: game_title,
+                app_version: game_version,
+                install_path: install_path.clone(),
+                executable: "game.sh".to_string(),
             };
             
+            // Create a simple demo executable script
+            let executable_path = install_path.join("game.sh");
+            let script_content = format!(
+                "#!/bin/bash\necho 'Launching {}'\necho 'This is a demo game executable'\n",
+                game.app_title
+            );
+            if let Err(e) = std::fs::write(&executable_path, script_content) {
+                eprintln!("Failed to create demo executable: {}", e);
+            }
+            
+            // Make it executable on Unix
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                if let Ok(metadata) = std::fs::metadata(&executable_path) {
+                    let mut perms = metadata.permissions();
+                    perms.set_mode(0o755);
+                    let _ = std::fs::set_permissions(&executable_path, perms);
+                }
+            }
+            
             // Save the installation record
-            let _ = game.save(&config);
+            if let Err(e) = game.save(&config) {
+                eprintln!("Failed to save game installation: {}", e);
+            }
         });
-        
-        // Refresh installed games after a delay
-        // In a real implementation, this would trigger a UI refresh
     }
 
     fn handle_launch(&mut self, app_name: String) {

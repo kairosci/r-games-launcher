@@ -21,7 +21,7 @@ impl Default for AuthView {
 }
 
 impl AuthView {
-    pub fn ui(&mut self, ui: &mut egui::Ui, _auth: &mut AuthManager) -> bool {
+    pub fn ui(&mut self, ui: &mut egui::Ui, auth: &mut AuthManager) -> bool {
         let mut should_login = false;
         
         ui.vertical_centered(|ui| {
@@ -94,9 +94,24 @@ impl AuthView {
                     .color(egui::Color32::GRAY));
                 
                 // For demo purposes, allow any input to "login"
+                // In a real implementation, this would perform OAuth authentication
                 if should_login {
-                    self.auth_status = "Authentication not fully implemented. Proceeding in demo mode...".to_string();
-                    // In a real implementation, we would call auth.set_token() here
+                    // Demo: Create a mock authentication token
+                    use chrono::Utc;
+                    use crate::auth::AuthToken;
+                    
+                    let demo_token = AuthToken {
+                        access_token: "demo_access_token".to_string(),
+                        refresh_token: "demo_refresh_token".to_string(),
+                        expires_at: Utc::now() + chrono::Duration::hours(24),
+                        account_id: "demo_user_id".to_string(),
+                    };
+                    
+                    if let Err(e) = auth.set_token(demo_token) {
+                        self.auth_status = format!("Error saving token: {}", e);
+                    } else {
+                        self.auth_status = "Successfully authenticated! (Demo mode)".to_string();
+                    }
                     self.is_loading = false;
                 }
                 
