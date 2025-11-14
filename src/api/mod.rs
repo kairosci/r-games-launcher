@@ -1,12 +1,38 @@
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, SystemTime};
 
 use crate::auth::AuthToken;
 use crate::{Error, Result};
 
 // Request timeout configuration
 const REQUEST_TIMEOUT_SECS: u64 = 30;
+
+// Retry configuration
+const MAX_RETRIES: u32 = 3;
+const INITIAL_RETRY_DELAY_MS: u64 = 1000;
+
+// Cache configuration
+const MANIFEST_CACHE_TTL_SECS: u64 = 3600; // 1 hour
+
+/// Cache entry for manifests
+#[derive(Debug, Clone)]
+struct CachedManifest {
+    manifest: GameManifest,
+    timestamp: SystemTime,
+}
+
+impl CachedManifest {
+    fn is_expired(&self) -> bool {
+        if let Ok(elapsed) = self.timestamp.elapsed() {
+            elapsed.as_secs() > MANIFEST_CACHE_TTL_SECS
+        } else {
+            true
+        }
+    }
+}
 
 // Epic Games Store API endpoints
 const OAUTH_TOKEN_URL: &str =
@@ -143,6 +169,7 @@ pub struct DownloadProgress {
 
 pub struct EpicClient {
     client: Client,
+    manifest_cache: Arc<Mutex<HashMap<String, CachedManifest>>>,
 }
 
 impl EpicClient {
@@ -152,7 +179,44 @@ impl EpicClient {
             .timeout(Duration::from_secs(REQUEST_TIMEOUT_SECS))
             .build()?;
 
-        Ok(Self { client })
+        Ok(Self {
+            client,
+            manifest_cache: Arc::new(Mutex::new(HashMap::new())),
+        })
+    }
+    
+    /// Execute a request with exponential backoff retry logic
+    async fn retry_request<F, T, Fut>(&self, operation: F) -> Result<T>
+    where
+        F: Fn() -> Fut,
+        Fut: std::future::Future<Output = Result<T>>,
+    {
+        let mut retry_count = 0;
+        let mut delay_ms = INITIAL_RETRY_DELAY_MS;
+
+        loop {
+            match operation().await {
+                Ok(result) => return Ok(result),
+                Err(e) => {
+                    retry_count += 1;
+                    if retry_count >= MAX_RETRIES {
+                        log::error!("Request failed after {} retries: {}", MAX_RETRIES, e);
+                        return Err(e);
+                    }
+
+                    log::warn!(
+                        "Request failed (attempt {}/{}), retrying in {}ms: {}",
+                        retry_count,
+                        MAX_RETRIES,
+                        delay_ms,
+                        e
+                    );
+
+                    tokio::time::sleep(Duration::from_millis(delay_ms)).await;
+                    delay_ms *= 2; // Exponential backoff
+                }
+            }
+        }
     }
 
     /// Request device authorization (Step 1 of OAuth device flow)
@@ -391,29 +455,37 @@ impl EpicClient {
         token: &AuthToken,
         app_name: &str,
     ) -> Result<GameManifest> {
-        // TODO: Implement real CDN manifest download
-        // TODO: Parse manifest URL from asset metadata (build_info or manifest_location fields)
-        // TODO: Handle gzip decompression for manifest files
-        // TODO: Validate manifest signature/checksum for security
-        // TODO: Cache manifests to reduce API calls
-        // TODO: Handle manifest format version differences
-
         log::info!("Downloading manifest for game: {}", app_name);
+
+        // Check cache first
+        {
+            let cache = self.manifest_cache.lock().unwrap();
+            if let Some(cached) = cache.get(app_name) {
+                if !cached.is_expired() {
+                    log::info!("Using cached manifest for {}", app_name);
+                    return Ok(cached.manifest.clone());
+                } else {
+                    log::info!("Cached manifest for {} is expired", app_name);
+                }
+            }
+        }
 
         // Get asset ID first
         let _asset_id = self.get_game_manifest(token, app_name).await?;
 
         // In a real implementation, we would:
-        // 1. Get the manifest URL from the asset metadata
-        // 2. Download the manifest file (usually gzipped JSON)
-        // 3. Decompress if needed
+        // 1. Get the manifest URL from the asset metadata (build_info or manifest_location fields)
+        // 2. Download the manifest file (usually gzipped JSON) with retry logic
+        // 3. Handle gzip decompression for manifest files
         // 4. Parse the manifest JSON
+        // 5. Validate manifest signature/checksum for security
+        // 6. Handle manifest format version differences
 
         // For now, create a minimal manifest structure for testing
         // This allows the installation process to proceed
         log::warn!("Using mock manifest data - real CDN download not implemented");
 
-        Ok(GameManifest {
+        let manifest = GameManifest {
             manifest_file_version: "21".to_string(),
             is_file_data: true,
             app_name: app_name.to_string(),
@@ -425,31 +497,52 @@ impl EpicClient {
             chunk_hash_list: std::collections::HashMap::new(),
             chunk_sha_list: std::collections::HashMap::new(),
             data_group_list: std::collections::HashMap::new(),
-        })
+        };
+
+        // Cache the manifest
+        {
+            let mut cache = self.manifest_cache.lock().unwrap();
+            cache.insert(
+                app_name.to_string(),
+                CachedManifest {
+                    manifest: manifest.clone(),
+                    timestamp: SystemTime::now(),
+                },
+            );
+            log::info!("Cached manifest for {}", app_name);
+        }
+
+        Ok(manifest)
+    }
+    
+    /// Clear the manifest cache
+    pub fn clear_manifest_cache(&self) {
+        let mut cache = self.manifest_cache.lock().unwrap();
+        cache.clear();
+        log::info!("Manifest cache cleared");
     }
 
-    /// Download a game chunk
+    /// Download a game chunk with retry logic
     pub async fn download_chunk(&self, chunk_guid: &str, _token: &AuthToken) -> Result<Vec<u8>> {
-        // TODO: Implement real CDN chunk download
-        // TODO: Construct proper CDN URL from chunk GUID and game-specific CDN base
-        // TODO: Implement parallel chunk downloads with connection pooling
-        // TODO: Add retry logic with exponential backoff for failed downloads
-        // TODO: Verify chunk integrity with SHA hash from manifest
-        // TODO: Handle chunk decompression (zlib/gzip)
-        // TODO: Support resume capability for interrupted downloads
-        // TODO: Add download progress reporting
-        // TODO: Implement bandwidth throttling option
-
         log::debug!("Downloading chunk: {}", chunk_guid);
 
-        // In a real implementation:
-        // 1. Construct CDN URL for the chunk
-        // 2. Download the chunk data
-        // 3. Verify integrity with SHA hash
-        // 4. Decompress if needed
+        // Use retry logic for chunk downloads
+        self.retry_request(|| async {
+            // In a real implementation:
+            // 1. Construct proper CDN URL from chunk GUID and game-specific CDN base
+            // 2. Download the chunk data with the HTTP client
+            // 3. Handle chunk decompression (zlib/gzip)
+            // 4. Verify chunk integrity with SHA hash from manifest
+            // 5. Support resume capability for interrupted downloads
+            // 6. Add download progress reporting
+            // 7. Implement bandwidth throttling option
 
-        log::warn!("Chunk download not implemented - returning empty data");
-        Ok(Vec::new())
+            // For now, return empty data
+            // TODO: Implement parallel chunk downloads with connection pooling
+            log::warn!("Chunk download not implemented - returning empty data");
+            Ok(Vec::new())
+        })
+        .await
     }
 
     /// Check for game updates
@@ -556,6 +649,7 @@ pub struct CloudSave {
     pub filename: String,
     pub size: u64,
     pub uploaded_at: String,
+    pub timestamp: String, // ISO 8601 timestamp for conflict resolution
 }
 
 impl Default for EpicClient {
