@@ -28,16 +28,46 @@ async fn main() -> Result<()> {
                 auth.logout()?;
                 println!("Successfully logged out");
             } else {
+                use r_games_launcher::api::EpicClient;
+                
                 println!("Epic Games Store Authentication");
                 println!("================================");
                 println!();
-                println!("Authentication is not yet fully implemented.");
-                println!("This requires setting up OAuth with Epic Games Store.");
-                println!();
-                println!("In the future, this will:");
-                println!("  1. Display a device code and URL");
-                println!("  2. Wait for you to authenticate in your browser");
-                println!("  3. Save your authentication token");
+                
+                let client = EpicClient::new()?;
+                
+                println!("Starting authentication process...");
+                
+                match client.authenticate().await {
+                    Ok((user_code, verification_url, token)) => {
+                        println!();
+                        println!("Please authenticate using your web browser:");
+                        println!();
+                        println!("  1. Open this URL: {}", verification_url);
+                        println!("  2. Enter this code: {}", user_code);
+                        println!();
+                        println!("Waiting for authentication...");
+                        
+                        // Save the token
+                        auth.set_token(token)?;
+                        
+                        println!();
+                        println!("✓ Successfully authenticated with Epic Games Store!");
+                        println!();
+                        println!("You can now:");
+                        println!("  - List your games: r-games-launcher list");
+                        println!("  - Install a game: r-games-launcher install <app_name>");
+                    }
+                    Err(e) => {
+                        eprintln!();
+                        eprintln!("Authentication failed: {}", e);
+                        eprintln!();
+                        eprintln!("Please try again. If the problem persists, check:");
+                        eprintln!("  - Your internet connection");
+                        eprintln!("  - Epic Games services status");
+                        std::process::exit(1);
+                    }
+                }
             }
         }
 

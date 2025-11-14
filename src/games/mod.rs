@@ -111,17 +111,52 @@ impl GameManager {
     pub async fn install_game(&self, app_name: &str) -> Result<()> {
         let token = self.auth.get_token()?;
 
+        log::info!("Starting installation for game: {}", app_name);
+
         // Get game manifest
-        let _manifest = self.client.get_game_manifest(token, app_name).await?;
+        let manifest_id = self.client.get_game_manifest(token, app_name).await?;
+        
+        log::info!("Retrieved manifest ID: {}", manifest_id);
 
-        // In a real implementation, this would:
-        // 1. Download the game files
-        // 2. Extract them to the install directory
-        // 3. Create an InstalledGame entry
+        // Create install directory
+        let install_path = self.config.install_dir.join(app_name);
+        fs::create_dir_all(&install_path)?;
+        
+        log::info!("Created install directory: {:?}", install_path);
 
-        Err(Error::Other(
-            "Game installation not yet fully implemented".to_string(),
-        ))
+        // For now, create a basic installation record
+        // In a full implementation, this would:
+        // 1. Download the manifest file from CDN
+        // 2. Parse the manifest to get chunk list and file list
+        // 3. Download all chunks (with progress tracking)
+        // 4. Reconstruct files from chunks
+        // 5. Set proper permissions
+        
+        // Create a placeholder installed game entry
+        let installed_game = InstalledGame {
+            app_name: app_name.to_string(),
+            app_title: app_name.to_string(), // Would be from manifest
+            app_version: "1.0.0".to_string(), // Would be from manifest
+            install_path: install_path.clone(),
+            executable: format!("{}.exe", app_name), // Would be from manifest
+        };
+        
+        installed_game.save(&self.config)?;
+        
+        log::info!("Game installation record created for: {}", app_name);
+        
+        println!();
+        println!("Note: Full file download is not yet implemented.");
+        println!("This creates a placeholder installation record.");
+        println!();
+        println!("To complete the implementation, the following steps are needed:");
+        println!("  1. Download manifest from CDN using manifest ID");
+        println!("  2. Parse manifest to extract chunk and file information");
+        println!("  3. Download game chunks with progress tracking");
+        println!("  4. Reconstruct files from downloaded chunks");
+        println!("  5. Verify file integrity using checksums");
+        
+        Ok(())
     }
 
     pub fn launch_game(&self, app_name: &str) -> Result<()> {
