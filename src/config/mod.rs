@@ -53,7 +53,6 @@ mod tests {
 
 impl Config {
     pub fn load() -> Result<Self> {
-        // TODO: Implement config validation
         // TODO: Handle config migration for version changes
         // TODO: Merge user config with defaults for missing values
         // TODO: Add config file watching for hot-reload
@@ -62,12 +61,39 @@ impl Config {
 
         if config_path.exists() {
             let contents = fs::read_to_string(&config_path)?;
-            Ok(toml::from_str(&contents)?)
+            let config: Config = toml::from_str(&contents)?;
+            config.validate()?;
+            Ok(config)
         } else {
             let config = Self::default();
             config.save()?;
             Ok(config)
         }
+    }
+    
+    /// Validate configuration values
+    fn validate(&self) -> Result<()> {
+        // Validate log level
+        let valid_log_levels = ["trace", "debug", "info", "warn", "error"];
+        if !valid_log_levels.contains(&self.log_level.as_str()) {
+            return Err(Error::Config(format!(
+                "Invalid log level: '{}'. Must be one of: {}",
+                self.log_level,
+                valid_log_levels.join(", ")
+            )));
+        }
+        
+        // Validate install directory - ensure parent exists or can be created
+        if let Some(parent) = self.install_dir.parent() {
+            if !parent.exists() {
+                return Err(Error::Config(format!(
+                    "Install directory parent does not exist: {}",
+                    parent.display()
+                )));
+            }
+        }
+        
+        Ok(())
     }
 
     pub fn save(&self) -> Result<()> {

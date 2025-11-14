@@ -5,6 +5,9 @@ use std::time::Duration;
 use crate::auth::AuthToken;
 use crate::{Error, Result};
 
+// Request timeout configuration
+const REQUEST_TIMEOUT_SECS: u64 = 30;
+
 // Epic Games Store API endpoints
 const OAUTH_TOKEN_URL: &str =
     "https://account-public-service-prod.ol.epicgames.com/account/api/oauth/token";
@@ -146,6 +149,7 @@ impl EpicClient {
     pub fn new() -> Result<Self> {
         let client = Client::builder()
             .user_agent("r-games-launcher/0.1.0")
+            .timeout(Duration::from_secs(REQUEST_TIMEOUT_SECS))
             .build()?;
 
         Ok(Self { client })
