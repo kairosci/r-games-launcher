@@ -153,6 +153,10 @@ impl EpicClient {
 
     /// Authenticate with Epic Games using device code flow
     pub async fn authenticate(&self) -> Result<(String, String, AuthToken)> {
+        // TODO: Implement rate limiting and exponential backoff for API requests
+        // TODO: Add timeout configuration for network requests
+        // TODO: Handle network interruptions gracefully with retry logic
+        
         // Step 1: Request device authorization
         log::info!("Requesting device authorization from Epic Games");
         
@@ -374,6 +378,13 @@ impl EpicClient {
 
     /// Download and parse game manifest
     pub async fn download_manifest(&self, token: &AuthToken, app_name: &str) -> Result<GameManifest> {
+        // TODO: Implement real CDN manifest download
+        // TODO: Parse manifest URL from asset metadata (build_info or manifest_location fields)
+        // TODO: Handle gzip decompression for manifest files
+        // TODO: Validate manifest signature/checksum for security
+        // TODO: Cache manifests to reduce API calls
+        // TODO: Handle manifest format version differences
+        
         log::info!("Downloading manifest for game: {}", app_name);
         
         // Get asset ID first
@@ -406,6 +417,16 @@ impl EpicClient {
 
     /// Download a game chunk
     pub async fn download_chunk(&self, chunk_guid: &str, _token: &AuthToken) -> Result<Vec<u8>> {
+        // TODO: Implement real CDN chunk download
+        // TODO: Construct proper CDN URL from chunk GUID and game-specific CDN base
+        // TODO: Implement parallel chunk downloads with connection pooling
+        // TODO: Add retry logic with exponential backoff for failed downloads
+        // TODO: Verify chunk integrity with SHA hash from manifest
+        // TODO: Handle chunk decompression (zlib/gzip)
+        // TODO: Support resume capability for interrupted downloads
+        // TODO: Add download progress reporting
+        // TODO: Implement bandwidth throttling option
+        
         log::debug!("Downloading chunk: {}", chunk_guid);
         
         // In a real implementation:
@@ -436,6 +457,12 @@ impl EpicClient {
 
     /// Get cloud saves for a game
     pub async fn get_cloud_saves(&self, _token: &AuthToken, app_name: &str) -> Result<Vec<CloudSave>> {
+        // TODO: Implement real cloud save API integration
+        // TODO: Query Epic's cloud save endpoints (per-game save metadata)
+        // TODO: Handle pagination for games with many saves
+        // TODO: Parse save metadata (timestamps, size, etc.)
+        // TODO: Implement save versioning and history
+        
         log::info!("Fetching cloud saves for {}", app_name);
         
         // In a real implementation:
@@ -449,6 +476,12 @@ impl EpicClient {
 
     /// Download a cloud save file
     pub async fn download_cloud_save(&self, _token: &AuthToken, save_id: &str) -> Result<Vec<u8>> {
+        // TODO: Implement cloud save download
+        // TODO: Get download URL from Epic API
+        // TODO: Handle encrypted saves (decrypt with user keys)
+        // TODO: Verify save integrity with checksums
+        // TODO: Handle save conflicts (local vs cloud)
+        
         log::info!("Downloading cloud save: {}", save_id);
         
         // In a real implementation:
@@ -462,6 +495,13 @@ impl EpicClient {
 
     /// Upload a cloud save file
     pub async fn upload_cloud_save(&self, _token: &AuthToken, app_name: &str, save_data: &[u8]) -> Result<()> {
+        // TODO: Implement cloud save upload
+        // TODO: Request upload URL from Epic API
+        // TODO: Encrypt saves if required by game
+        // TODO: Handle upload conflicts with existing saves
+        // TODO: Implement save metadata (timestamp, game version)
+        // TODO: Add upload progress reporting for large saves
+        
         log::info!("Uploading cloud save for {} ({} bytes)", app_name, save_data.len());
         
         // In a real implementation:

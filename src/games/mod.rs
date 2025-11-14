@@ -109,6 +109,13 @@ impl GameManager {
     }
 
     pub async fn install_game(&self, app_name: &str) -> Result<()> {
+        // TODO: Check available disk space before installation
+        // TODO: Implement resume capability for interrupted installations
+        // TODO: Add progress tracking with download speed and ETA
+        // TODO: Verify file integrity after reconstruction
+        // TODO: Handle installation cancellation gracefully
+        // TODO: Support selective installation (choose components/languages)
+        
         let token = self.auth.get_token()?;
 
         log::info!("Starting installation for game: {}", app_name);
@@ -130,6 +137,13 @@ impl GameManager {
 
         // Download game files
         if !manifest.file_list.is_empty() {
+            // TODO: Implement parallel file downloads with thread pool
+            // TODO: Reconstruct files from downloaded chunks
+            // TODO: Verify file checksums against manifest
+            // TODO: Set proper file permissions (executable, read-only, etc.)
+            // TODO: Handle sparse files correctly
+            // TODO: Track and save download progress for resume capability
+            
             println!("\nDownloading game files...");
             
             for (idx, file) in manifest.file_list.iter().enumerate() {
@@ -138,7 +152,9 @@ impl GameManager {
                 // Download chunks for this file
                 for chunk in &file.file_chunk_parts {
                     let _chunk_data = self.client.download_chunk(&chunk.guid, token).await?;
-                    // In a real implementation: reconstruct file from chunks
+                    // TODO: Reconstruct file from chunks
+                    // TODO: Write chunks to file at correct offsets
+                    // TODO: Verify chunk integrity before writing
                 }
             }
             
@@ -215,6 +231,12 @@ impl GameManager {
 
     /// Update a game to the latest version
     pub async fn update_game(&self, app_name: &str) -> Result<()> {
+        // TODO: Implement differential updates (download only changed files)
+        // TODO: Compare old and new manifests to identify changes
+        // TODO: Support update rollback in case of failure
+        // TODO: Preserve user settings and save files during update
+        // TODO: Show update changelog to user
+        
         let token = self.auth.get_token()?;
         
         log::info!("Updating game: {}", app_name);
@@ -249,6 +271,12 @@ impl GameManager {
 
     /// Download cloud saves for a game
     pub async fn download_cloud_saves(&self, app_name: &str) -> Result<()> {
+        // TODO: Implement conflict resolution for cloud vs local saves
+        // TODO: Compare timestamps to detect newer save
+        // TODO: Allow user to choose which save to keep
+        // TODO: Create backup of local saves before overwriting
+        // TODO: Support automatic sync on game launch/exit
+        
         let token = self.auth.get_token()?;
         let game = InstalledGame::load(&self.config, app_name)?;
         
