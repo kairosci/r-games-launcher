@@ -8,6 +8,7 @@ An Epic Games Store launcher for Linux written in Rust, inspired by [Legendary](
 - **Epic Games Store Integration**: Authenticate and access your Epic Games library
 - **Game Management**: List, install, launch, and uninstall games
 - **Configuration Management**: Persistent configuration and authentication
+- **GUI Interface**: Minimal, Epic Games-inspired graphical user interface
 - **CLI Interface**: Easy-to-use command-line interface
 
 ## Installation
@@ -27,6 +28,25 @@ cargo install --path .
 ```
 
 ## Usage
+
+### GUI Mode
+
+Launch the graphical user interface:
+
+```bash
+r-games-launcher gui
+```
+
+The GUI provides an Epic Games Store-like experience with:
+- **Login Screen**: Authenticate with your Epic Games account
+- **Game Library**: Browse all your games with search and filter capabilities
+- **Game Cards**: Visual representation of each game with installation status
+- **Quick Actions**: Install, launch, or uninstall games with one click
+- **Dark Theme**: Modern dark interface inspired by Epic Games Store
+
+### CLI Mode
+
+The launcher also provides a full command-line interface for all operations.
 
 ### Authentication
 
@@ -141,16 +161,17 @@ This project is currently in active development. The following features are impl
 
 - [x] Project structure and core modules
 - [x] CLI interface
+- [x] GUI interface with Epic Games-inspired design
 - [x] Configuration management
 - [x] Authentication framework
-- [x] Epic Games OAuth device code flow integration
-- [x] Game library fetching from Epic Games API
-- [x] Game manifest ID retrieval
+- [x] Game library display (demo mode)
+- [x] Game installation workflow (framework in place)
 - [x] Game launching (for installed games)
-- [x] Token refresh mechanism
-- [ ] Complete game manifest parsing from CDN
-- [ ] Game file download with progress tracking
-- [ ] Complete game installation from downloaded files
+- [x] Game uninstallation
+- [ ] Epic Games OAuth integration (full implementation)
+- [ ] Real Epic Games API integration
+- [ ] Game manifest parsing
+- [ ] Game download and installation (full implementation)
 - [ ] Update management
 - [ ] Cloud saves support
 
