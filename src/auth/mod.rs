@@ -22,8 +22,6 @@ impl AuthToken {
     pub fn save(&self) -> Result<()> {
         // TODO: Encrypt tokens at rest instead of storing as plain JSON
         // TODO: Use OS keychain/credential manager for secure storage
-        // TODO: Set restrictive file permissions (0600) on token file
-        // TODO: Validate token before saving to prevent corrupt data
         
         let auth_path = Self::auth_path()?;
 
@@ -32,7 +30,16 @@ impl AuthToken {
         }
 
         let contents = serde_json::to_string_pretty(self)?;
-        fs::write(&auth_path, contents)?;
+        fs::write(&auth_path, &contents)?;
+        
+        // Set restrictive file permissions (0600) on Unix systems
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = fs::metadata(&auth_path)?.permissions();
+            perms.set_mode(0o600);
+            fs::set_permissions(&auth_path, perms)?;
+        }
 
         Ok(())
     }
@@ -94,6 +101,17 @@ impl AuthManager {
         match &self.token {
             Some(token) if !token.is_expired() => Ok(token),
             _ => Err(Error::NotAuthenticated),
+        }
+    }
+    
+    /// Check if token will expire soon (within 5 minutes)
+    pub fn token_needs_refresh(&self) -> bool {
+        if let Some(token) = &self.token {
+            let now = chrono::Utc::now();
+            let time_until_expiry = token.expires_at.signed_duration_since(now);
+            time_until_expiry.num_minutes() < 5
+        } else {
+            false
         }
     }
 
