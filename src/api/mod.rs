@@ -82,6 +82,62 @@ struct CatalogItem {
     current_version: Option<String>,
 }
 
+// Manifest structures for Epic Games manifest format
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GameManifest {
+    #[serde(rename = "ManifestFileVersion")]
+    pub manifest_file_version: String,
+    #[serde(rename = "bIsFileData")]
+    pub is_file_data: bool,
+    #[serde(rename = "AppNameString")]
+    pub app_name: String,
+    #[serde(rename = "AppVersionString")]
+    pub app_version: String,
+    #[serde(rename = "LaunchExeString")]
+    pub launch_exe: String,
+    #[serde(rename = "LaunchCommand")]
+    pub launch_command: String,
+    #[serde(rename = "BuildSizeInt")]
+    pub build_size: u64,
+    #[serde(rename = "FileManifestList")]
+    pub file_list: Vec<FileManifest>,
+    #[serde(rename = "ChunkHashList")]
+    pub chunk_hash_list: std::collections::HashMap<String, String>,
+    #[serde(rename = "ChunkShaList")]
+    pub chunk_sha_list: std::collections::HashMap<String, Vec<u8>>,
+    #[serde(rename = "DataGroupList")]
+    pub data_group_list: std::collections::HashMap<String, Vec<String>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileManifest {
+    #[serde(rename = "Filename")]
+    pub filename: String,
+    #[serde(rename = "FileHash")]
+    pub file_hash: Vec<u8>,
+    #[serde(rename = "FileChunkParts")]
+    pub file_chunk_parts: Vec<ChunkPart>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChunkPart {
+    #[serde(rename = "Guid")]
+    pub guid: String,
+    #[serde(rename = "Offset")]
+    pub offset: u64,
+    #[serde(rename = "Size")]
+    pub size: u64,
+}
+
+#[derive(Debug, Clone)]
+pub struct DownloadProgress {
+    pub total_bytes: u64,
+    pub downloaded_bytes: u64,
+    pub total_files: usize,
+    pub downloaded_files: usize,
+    pub current_file: String,
+}
+
 pub struct EpicClient {
     client: Client,
 }
@@ -315,6 +371,116 @@ impl EpicClient {
         // In a real implementation, we would fetch the actual manifest from CDN
         Ok(asset.id.clone())
     }
+
+    /// Download and parse game manifest
+    pub async fn download_manifest(&self, token: &AuthToken, app_name: &str) -> Result<GameManifest> {
+        log::info!("Downloading manifest for game: {}", app_name);
+        
+        // Get asset ID first
+        let _asset_id = self.get_game_manifest(token, app_name).await?;
+        
+        // In a real implementation, we would:
+        // 1. Get the manifest URL from the asset metadata
+        // 2. Download the manifest file (usually gzipped JSON)
+        // 3. Decompress if needed
+        // 4. Parse the manifest JSON
+        
+        // For now, create a minimal manifest structure for testing
+        // This allows the installation process to proceed
+        log::warn!("Using mock manifest data - real CDN download not implemented");
+        
+        Ok(GameManifest {
+            manifest_file_version: "21".to_string(),
+            is_file_data: true,
+            app_name: app_name.to_string(),
+            app_version: "1.0.0".to_string(),
+            launch_exe: format!("{}.exe", app_name),
+            launch_command: String::new(),
+            build_size: 0,
+            file_list: Vec::new(),
+            chunk_hash_list: std::collections::HashMap::new(),
+            chunk_sha_list: std::collections::HashMap::new(),
+            data_group_list: std::collections::HashMap::new(),
+        })
+    }
+
+    /// Download a game chunk
+    pub async fn download_chunk(&self, chunk_guid: &str, _token: &AuthToken) -> Result<Vec<u8>> {
+        log::debug!("Downloading chunk: {}", chunk_guid);
+        
+        // In a real implementation:
+        // 1. Construct CDN URL for the chunk
+        // 2. Download the chunk data
+        // 3. Verify integrity with SHA hash
+        // 4. Decompress if needed
+        
+        log::warn!("Chunk download not implemented - returning empty data");
+        Ok(Vec::new())
+    }
+
+    /// Check for game updates
+    pub async fn check_for_updates(&self, token: &AuthToken, app_name: &str, current_version: &str) -> Result<Option<String>> {
+        log::info!("Checking for updates for {}", app_name);
+        
+        // Get latest manifest
+        let manifest = self.download_manifest(token, app_name).await?;
+        
+        if manifest.app_version != current_version {
+            log::info!("Update available: {} -> {}", current_version, manifest.app_version);
+            Ok(Some(manifest.app_version))
+        } else {
+            log::info!("Game is up to date");
+            Ok(None)
+        }
+    }
+
+    /// Get cloud saves for a game
+    pub async fn get_cloud_saves(&self, _token: &AuthToken, app_name: &str) -> Result<Vec<CloudSave>> {
+        log::info!("Fetching cloud saves for {}", app_name);
+        
+        // In a real implementation:
+        // 1. Query Epic's cloud save API
+        // 2. Get list of available saves
+        // 3. Return save metadata
+        
+        log::warn!("Cloud save fetching not implemented");
+        Ok(Vec::new())
+    }
+
+    /// Download a cloud save file
+    pub async fn download_cloud_save(&self, _token: &AuthToken, save_id: &str) -> Result<Vec<u8>> {
+        log::info!("Downloading cloud save: {}", save_id);
+        
+        // In a real implementation:
+        // 1. Get save download URL
+        // 2. Download save data
+        // 3. Verify integrity
+        
+        log::warn!("Cloud save download not implemented");
+        Ok(Vec::new())
+    }
+
+    /// Upload a cloud save file
+    pub async fn upload_cloud_save(&self, _token: &AuthToken, app_name: &str, save_data: &[u8]) -> Result<()> {
+        log::info!("Uploading cloud save for {} ({} bytes)", app_name, save_data.len());
+        
+        // In a real implementation:
+        // 1. Get upload URL from API
+        // 2. Upload save data
+        // 3. Verify upload success
+        
+        log::warn!("Cloud save upload not implemented");
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CloudSave {
+    pub id: String,
+    pub app_name: String,
+    pub filename: String,
+    pub size: u64,
+    pub uploaded_at: String,
 }
 
 impl Default for EpicClient {

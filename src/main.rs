@@ -203,6 +203,73 @@ async fn main() -> Result<()> {
             }
         }
 
+        Commands::Update { app_name, check_only } => {
+            if !auth.is_authenticated() {
+                eprintln!("Error: Not authenticated. Run 'r-games-launcher auth' first.");
+                std::process::exit(1);
+            }
+
+            let manager = GameManager::new(config, auth)?;
+
+            if check_only {
+                println!("Checking for updates for {}...", app_name);
+                match manager.check_for_updates(&app_name).await {
+                    Ok(Some(version)) => {
+                        println!("✓ Update available: version {}", version);
+                    }
+                    Ok(None) => {
+                        println!("✓ Game is up to date");
+                    }
+                    Err(e) => {
+                        eprintln!("Failed to check for updates: {}", e);
+                        std::process::exit(1);
+                    }
+                }
+            } else {
+                match manager.update_game(&app_name).await {
+                    Ok(()) => println!("✓ Update complete!"),
+                    Err(e) => {
+                        eprintln!("Failed to update game: {}", e);
+                        std::process::exit(1);
+                    }
+                }
+            }
+        }
+
+        Commands::CloudSave { app_name, download, upload } => {
+            if !auth.is_authenticated() {
+                eprintln!("Error: Not authenticated. Run 'r-games-launcher auth' first.");
+                std::process::exit(1);
+            }
+
+            let manager = GameManager::new(config, auth)?;
+
+            if !download && !upload {
+                eprintln!("Error: Specify --download or --upload");
+                std::process::exit(1);
+            }
+
+            if download {
+                match manager.download_cloud_saves(&app_name).await {
+                    Ok(()) => {}
+                    Err(e) => {
+                        eprintln!("Failed to download cloud saves: {}", e);
+                        std::process::exit(1);
+                    }
+                }
+            }
+
+            if upload {
+                match manager.upload_cloud_saves(&app_name).await {
+                    Ok(()) => {}
+                    Err(e) => {
+                        eprintln!("Failed to upload cloud saves: {}", e);
+                        std::process::exit(1);
+                    }
+                }
+            }
+        }
+
         Commands::Gui => {
             use r_games_launcher::gui::LauncherApp;
             
