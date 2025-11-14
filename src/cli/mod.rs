@@ -2,10 +2,10 @@ use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(name = "r-games-launcher")]
-#[command(author, version, about = "Epic Games launcher for Linux written in Rust", long_about = None)]
+#[command(author, version, about = "Epic Games launcher for Linux written in Rust - GUI-first application", long_about = None)]
 pub struct Cli {
     #[command(subcommand)]
-    pub command: Commands,
+    pub command: Option<Commands>,
 
     /// Enable verbose logging
     #[arg(short, long, global = true)]
