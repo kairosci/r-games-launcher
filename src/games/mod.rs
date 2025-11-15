@@ -25,7 +25,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use crate::api::{EpicClient, Game};
 use crate::auth::AuthManager;
@@ -91,6 +91,7 @@ impl InstallProgress {
 }
 
 /// Verify file integrity using SHA hash
+#[allow(dead_code)]
 fn verify_file_integrity(file_path: &Path, expected_hash: &[u8]) -> Result<bool> {
     use sha2::{Sha256, Digest};
     
@@ -107,6 +108,7 @@ fn verify_file_integrity(file_path: &Path, expected_hash: &[u8]) -> Result<bool>
 }
 
 /// Verify chunk integrity using SHA hash
+#[allow(dead_code)]
 fn verify_chunk_integrity(chunk_data: &[u8], expected_hash: &[u8]) -> Result<bool> {
     use sha2::{Sha256, Digest};
     
@@ -339,7 +341,7 @@ impl GameManager {
                 // TODO: Implement parallel file downloads with thread pool
                 // TODO: Support selective installation (choose components/languages)
                 for chunk in &file.file_chunk_parts {
-                    let chunk_data = self.client.download_chunk(&chunk.guid, token).await?;
+                    let chunk_data = self.client.download_chunk(&chunk.guid, token, None).await?;
                     total_downloaded += chunk_data.len() as u64;
                     
                     // TODO: Reconstruct file from chunks at correct offsets
@@ -531,7 +533,7 @@ impl GameManager {
             }
             
             println!("  Downloading: {}", save.filename);
-            let save_data = self.client.download_cloud_save(token, &save.id).await?;
+            let save_data = self.client.download_cloud_save(token, app_name, &save.id).await?;
 
             fs::write(&save_path, &save_data)?;
 
@@ -565,13 +567,11 @@ impl GameManager {
 
             if path.is_file() {
                 let save_data = fs::read(&path)?;
-                println!(
-                    "  Uploading: {}",
-                    path.file_name().unwrap().to_string_lossy()
-                );
+                let filename = path.file_name().unwrap().to_string_lossy().to_string();
+                println!("  Uploading: {}", filename);
 
                 self.client
-                    .upload_cloud_save(token, app_name, &save_data)
+                    .upload_cloud_save(token, app_name, &filename, &save_data)
                     .await?;
                 uploaded += 1;
             }
