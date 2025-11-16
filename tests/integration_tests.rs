@@ -1,4 +1,4 @@
-use r_games_launcher::{auth::AuthManager, config::Config, games::GameManager};
+use rauncher::{auth::AuthManager, config::Config, games::GameManager};
 use std::fs;
 use tempfile::TempDir;
 
@@ -16,10 +16,10 @@ fn test_config_creation_and_loading() {
     // Save it
     let config_str = toml::to_string(&config).unwrap();
     fs::write(&config_path, config_str).unwrap();
-    
+
     // Load it back
     let loaded_config: Config = toml::from_str(&fs::read_to_string(&config_path).unwrap()).unwrap();
-    
+
     assert_eq!(config.log_level, loaded_config.log_level);
 }
 
@@ -42,7 +42,7 @@ fn test_game_manager_creation() {
     
     let auth = AuthManager::new().unwrap();
     let manager = GameManager::new(config, auth);
-    
+
     assert!(manager.is_ok());
 }
 
@@ -56,7 +56,7 @@ fn test_list_installed_games_empty() {
     
     let auth = AuthManager::new().unwrap();
     let manager = GameManager::new(config, auth).unwrap();
-    
+
     let games = manager.list_installed().unwrap();
     assert_eq!(games.len(), 0);
 }
@@ -66,13 +66,13 @@ fn test_list_installed_games_empty() {
 fn test_install_directory_setup() {
     let temp_dir = TempDir::new().unwrap();
     let install_dir = temp_dir.path().join("games");
-    
+
     // Directory should not exist initially
     assert!(!install_dir.exists());
-    
+
     // Create it
     fs::create_dir_all(&install_dir).unwrap();
-    
+
     // Now it should exist
     assert!(install_dir.exists());
     assert!(install_dir.is_dir());
@@ -88,7 +88,7 @@ fn test_invalid_install_path_handling() {
     
     let auth = AuthManager::new().unwrap();
     let manager = GameManager::new(config, auth).unwrap();
-    
+
     // Try to uninstall a non-existent game
     let result = manager.uninstall_game("nonexistent_game");
     assert!(result.is_err());
